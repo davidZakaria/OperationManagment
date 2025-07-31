@@ -1,0 +1,128 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Unit {
+  id                    Int      @id @default(autoincrement())
+  date                  DateTime?
+  unitCode             String   @unique @map("unit_code")
+  project              String?
+  type                 String?
+  salesStatus          String?  @map("sales_status")
+  clientName           String?  @map("client_name")
+  blockNo              String?  @map("block_no")
+  plot                 String?
+  floor                String?
+  unitNo               String?  @map("unit_no")
+  bua                  Float?   // Built-up Area
+  garden               Float?
+  roof                 Float?
+  outdoor              Float?
+  unitPrice            Float?   @map("unit_price")
+  contractPrice        Float?   @map("contract_price")
+  priceInstallment     Float?   @map("price_installment")
+  salesAgent           String?  @map("sales_agent")
+  brokerName           String?  @map("broker_name")
+  source               String?
+  address              String?
+  phoneNumber          String?  @map("phone_number")
+  maintenance          Float?
+  parking              String?
+  year                 Int?
+  deliveryDate         DateTime? @map("delivery_date")
+  gracePeriod          Int?     @map("grace_period")
+  contractFinishing    String?  @map("contract_finishing")
+  comments             String?
+  
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("units")
+}
+
+model Reservation {
+  id                    Int      @id @default(autoincrement())
+  reservationCode      String   @unique @map("reservation_code")
+  sr                   String?
+  reservationDate      DateTime? @map("reservation_date")
+  clientName           String?  @map("client_name")
+  nationality          String?
+  idPassport           String?  @map("id_passport")
+  dateOfId             DateTime? @map("date_of_id")
+  serialNumOfId        String?  @map("serial_num_of_id")
+  address              String?
+  email                String?
+  homeNumber           String?  @map("home_number")
+  mobileNumber         String?  @map("mobile_number")
+  unitCode             String?  @map("unit_code")
+  payment              Float?
+  deposit              Float?
+  currency             String?
+  paymentMethod        String?  @map("payment_method")
+  depositTransferNumber String? @map("deposit_transfer_number")
+  dateOfDepositTransfer DateTime? @map("date_of_deposit_transfer")
+  bankName             String?  @map("bank_name")
+  sales                String?
+  salesManager         String?  @map("sales_manager")
+  seniorSalesManager   String?  @map("senior_sales_manager")
+  cancel               String?  // Cancel status
+  
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("reservations")
+}
+
+model ImportHistory {
+  id          Int      @id @default(autoincrement())
+  filename    String
+  recordCount Int      @map("record_count")
+  importedAt  DateTime @default(now()) @map("imported_at")
+  
+  @@map("import_history")
+}
+
+model FormTemplate {
+  id           Int      @id @default(autoincrement())
+  name         String   @unique
+  description  String?
+  templateType String   @map("template_type") // e.g., 'registration', 'contract', etc.
+  fields       String   // JSON string of field definitions
+  layout       String?  // Optional layout configuration as JSON string
+  isActive     Boolean  @default(true) @map("is_active")
+  createdBy    String?  @map("created_by")
+  
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  generatedForms GeneratedForm[]
+  
+  @@map("form_templates")
+}
+
+model GeneratedForm {
+  id             Int      @id @default(autoincrement())
+  templateId     Int      @map("template_id")
+  formData       String   // The actual form data with filled values as JSON string
+  reservationCode String? @map("reservation_code")
+  unitCode       String?  @map("unit_code")
+  status         String   @default("draft") // draft, completed, printed
+  generatedBy    String?  @map("generated_by")
+  
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  template       FormTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  @@map("generated_forms")
+} 
