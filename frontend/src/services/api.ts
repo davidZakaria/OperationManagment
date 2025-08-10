@@ -1,7 +1,7 @@
 import axios, { InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { Unit, Reservation, ApiResponse, FilterOptions, ReservationFilterOptions, DashboardStats, ImportHistory, UploadResponse } from '../types';
 
-const API_BASE = (window as any).env?.REACT_APP_API_BASE || '/api';
+const API_BASE = (window as any).env?.REACT_APP_API_BASE || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_BASE,

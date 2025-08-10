@@ -150,8 +150,27 @@ router.post('/', async (req, res) => {
       }
     }
 
+    // Convert and validate data types
+    const processedData = {
+      ...unitData,
+      // Convert numeric fields from strings to numbers
+      bua: unitData.bua ? parseFloat(unitData.bua) : null,
+      garden: unitData.garden ? parseFloat(unitData.garden) : null,
+      roof: unitData.roof ? parseFloat(unitData.roof) : null,
+      outdoor: unitData.outdoor ? parseFloat(unitData.outdoor) : null,
+      unitPrice: unitData.unitPrice ? parseFloat(unitData.unitPrice) : null,
+      contractPrice: unitData.contractPrice ? parseFloat(unitData.contractPrice) : null,
+      priceInstallment: unitData.priceInstallment ? parseFloat(unitData.priceInstallment) : null,
+      maintenance: unitData.maintenance ? parseFloat(unitData.maintenance) : null,
+      year: unitData.year ? parseInt(unitData.year) : null,
+      gracePeriod: unitData.gracePeriod ? parseInt(unitData.gracePeriod) : null,
+      // Convert date strings to Date objects
+      date: unitData.date ? new Date(unitData.date) : null,
+      deliveryDate: unitData.deliveryDate ? new Date(unitData.deliveryDate) : null,
+    };
+
     const unit = await prisma.unit.create({
-      data: unitData
+      data: processedData
     });
 
     res.status(201).json(unit);
@@ -188,9 +207,28 @@ router.put('/:id', async (req, res) => {
       }
     }
 
+    // Convert and validate data types (same as create)
+    const processedData = {
+      ...unitData,
+      // Convert numeric fields from strings to numbers
+      bua: unitData.bua ? parseFloat(unitData.bua) : null,
+      garden: unitData.garden ? parseFloat(unitData.garden) : null,
+      roof: unitData.roof ? parseFloat(unitData.roof) : null,
+      outdoor: unitData.outdoor ? parseFloat(unitData.outdoor) : null,
+      unitPrice: unitData.unitPrice ? parseFloat(unitData.unitPrice) : null,
+      contractPrice: unitData.contractPrice ? parseFloat(unitData.contractPrice) : null,
+      priceInstallment: unitData.priceInstallment ? parseFloat(unitData.priceInstallment) : null,
+      maintenance: unitData.maintenance ? parseFloat(unitData.maintenance) : null,
+      year: unitData.year ? parseInt(unitData.year) : null,
+      gracePeriod: unitData.gracePeriod ? parseInt(unitData.gracePeriod) : null,
+      // Convert date strings to Date objects
+      date: unitData.date ? new Date(unitData.date) : null,
+      deliveryDate: unitData.deliveryDate ? new Date(unitData.deliveryDate) : null,
+    };
+
     const updatedUnit = await prisma.unit.update({
       where: { id: parseInt(id) },
-      data: unitData
+      data: processedData
     });
 
     res.json(updatedUnit);

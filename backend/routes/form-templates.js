@@ -35,19 +35,23 @@ const DEFAULT_TEMPLATE = {
     { id: "bua", type: "number", label: "المساحة", source: "units.bua", section: "unit" },
     { id: "outdoor", type: "number", label: "المساحة الخارجية", source: "units.outdoor", section: "unit" },
     { id: "unitPrice", type: "number", label: "سعر الوحدة", source: "units.unitPrice", section: "unit" },
-    { id: "priceInstallment", type: "number", label: "نظام التقسيط المبدئي", source: "units.priceInstallment", section: "unit" },
     
     // Payment Section
+    { id: "priceInstallment", type: "number", label: "نظام التقسيط المبدئي", source: "units.priceInstallment", section: "payment" },
     { id: "deposit", type: "number", label: "مبلغ تحت حساب الحجز للوحدة", source: "reservations.deposit", section: "payment", required: true },
     { id: "currency", type: "select", label: "العملة", source: "reservations.currency", section: "payment", options: ["جنيه مصرى", "جنية استرلينى", "دولار امريكى", "دولار كندى"] },
     { id: "paymentMethod", type: "select", label: "طريقة سداد مبلغ تحت حساب حجز", source: "reservations.paymentMethod", section: "payment", options: ["نقدى بالخزينة", "شيك", "تحويل بنكي"] },
     { id: "depositTransferNumber", type: "text", label: "رقم الشيك/ الايداع / التحويل", source: "reservations.depositTransferNumber", section: "payment" },
     { id: "dateOfDepositTransfer", type: "date", label: "بتاريخ", source: "reservations.dateOfDepositTransfer", section: "payment" },
     { id: "bankName", type: "text", label: "بنك", source: "reservations.bankName", section: "payment" },
+    { id: "paymentType", type: "text", label: "طريقة الدفع", source: "reservations.payment", section: "payment" },
     
     // Staff Signatures Section
     { id: "sales", type: "text", label: "مسئول المبيعات", source: "reservations.sales", section: "signatures" },
     { id: "operationsManager", type: "text", label: "مسئول العمليات", source: "manual", section: "signatures" },
+    
+    // Terms and Conditions Section
+    { id: "terms", type: "textarea", label: "الشروط والأحكام", source: "manual", section: "terms", value: "1. يتم التوقيع على العقد وسداد باقى مقدم الحجز خلال ثلاثة أيام عمل بحد أقصى من تاريخ هذه الاستمارة ، وفى حالة عدم السداد او التوقيع خلال هذه المدة تعتبر إستمارة الحجز لاغيه ويحق للشركة إعادة طرح الوحدة للبيع ، ولا يحق له الرجوع على الشركة حاليا او مستقبلا بشأن اعادة بيع الوحدة.\n\n2. فى حاله إمتناعى عن توقيع العقد الإبتدائى فى الموعد المحدد يعتبر ذلك عدولا نهائيا من جانبى عن الحجز و تكون هذه الإستمارة كأن لم تكن دون الحاجة إلى التنبيه أو إنذار أو حكم قضائى و يحق للشركه بيع الوحدة للغير دون الإعتداد بهذا الحجز.\n\n3. يعتبر الحجز لاغيا وكأن لم يكن دون الحاجة إلى تنبية أو إنذار أو حكم قضائى فى حاله إرتداد شيك دفعة الحجز.\n\n4. تعتبر هذة الإستمارة جزء مكمل للعقد و يعتبر توقيعى على هذه الإستمارة موافقه على كافة شروطها.\n\n5.أقر بأن عنوان المراسلة الثابت بهذه الإستمارة هو موطنى المختار الذى يصح عليه إخطارى بكافة المراسلات.\n\n6.يعتبر هذا الطلب غير منتج لأثاره القانونية ما لم يكن مختوم بخاتم الشركة و موقعا عليه من الموظف المسئول و المفوض من قبل الإدارة و مرفقا به الإيصال الدال على سداد مقدم الحجز الصادر من الشركة.\n\n7.فى حالة عدم تحصيل مبلغ جدية الحجز المذكور أعلاه تكون هذه الإستمارة كأن لم تكن دون الحاجة إلى التنبيه أو إنذار أو حكم قضائى و يحق للشركه بيع الوحدة للغير دون الإعتداد بهذا الحجز.\n\n8. يتم سداد المبلغ المتبقى للوحدة على أقساط بالاضافة الى مبلغ وديعة الصيانة طبقا لجدول الاقساط النهائى والمتفق علية والمرفق بهذه الاستمارة." },
     { id: "salesManager", type: "text", label: "مدير المبيعات", source: "reservations.salesManager", section: "signatures" },
     { id: "financialReview", type: "text", label: "المراجعة المالية", source: "manual", section: "signatures" },
     { id: "seniorSalesManager", type: "text", label: "مدير أول المبيعات", source: "reservations.seniorSalesManager", section: "signatures" },
@@ -192,7 +196,16 @@ router.post('/create-default', async (req, res) => {
     });
     
     if (existingTemplate) {
-      return res.json({ success: true, data: existingTemplate, message: 'Default template already exists' });
+      // Update existing template with latest fields
+      const updatedTemplate = await prisma.formTemplate.update({
+        where: { id: existingTemplate.id },
+        data: {
+          fields: JSON.stringify(DEFAULT_TEMPLATE.fields),
+          layout: JSON.stringify(DEFAULT_TEMPLATE.layout),
+          updatedAt: new Date()
+        }
+      });
+      return res.json({ success: true, data: updatedTemplate, message: 'Default template updated with latest fields' });
     }
     
     const template = await prisma.formTemplate.create({
@@ -208,6 +221,35 @@ router.post('/create-default', async (req, res) => {
   } catch (error) {
     console.error('Error creating default template:', error);
     res.status(500).json({ success: false, error: 'Failed to create default template' });
+  }
+});
+
+// POST /api/form-templates/update-default - Update default template with latest fields
+router.post('/update-default', async (req, res) => {
+  try {
+    // Find existing default template
+    const existingTemplate = await prisma.formTemplate.findFirst({
+      where: { name: DEFAULT_TEMPLATE.name }
+    });
+    
+    if (!existingTemplate) {
+      return res.status(404).json({ success: false, error: 'Default template not found' });
+    }
+    
+    // Update the template with new fields
+    const updatedTemplate = await prisma.formTemplate.update({
+      where: { id: existingTemplate.id },
+      data: {
+        fields: JSON.stringify(DEFAULT_TEMPLATE.fields),
+        layout: JSON.stringify(DEFAULT_TEMPLATE.layout),
+        updatedAt: new Date()
+      }
+    });
+    
+    res.json({ success: true, data: updatedTemplate, message: 'Default template updated successfully' });
+  } catch (error) {
+    console.error('Error updating default template:', error);
+    res.status(500).json({ success: false, error: 'Failed to update default template' });
   }
 });
 

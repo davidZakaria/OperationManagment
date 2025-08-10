@@ -18,9 +18,34 @@ router.get('/merge-data/:reservationCode/:unitCode', async (req, res) => {
     }
     
     // Fetch unit data by unitCode
-    const unit = await prisma.unit.findUnique({
+    // Try to find unit by exact match first
+    let unit = await prisma.unit.findUnique({
       where: { unitCode }
     });
+    
+    // If exact match fails, try flexible matching
+    if (!unit) {
+      // Try to extract unit identifier from reservation unitCode
+      // Format: "[(J1) (4-1S)]" -> try matching parts
+      const unitCodePattern = unitCode.replace(/[\[\]()]/g, '').trim();
+      const parts = unitCodePattern.split(' ').filter(p => p.length > 0);
+      
+      if (parts.length > 0) {
+        // Try to find unit by searching for any part of the code
+        const units = await prisma.unit.findMany({
+          where: {
+            OR: parts.map(part => ({
+              unitCode: { contains: part }
+            }))
+          },
+          take: 1
+        });
+        
+        if (units.length > 0) {
+          unit = units[0];
+        }
+      }
+    }
     
     if (!unit) {
       return res.status(404).json({ success: false, error: 'Unit not found' });
@@ -113,16 +138,43 @@ router.post('/populate-template', async (req, res) => {
       where: { reservationCode }
     });
     
-    const unit = await prisma.unit.findUnique({
+    // Try to find unit by exact match first
+    let unit = await prisma.unit.findUnique({
       where: { unitCode }
     });
     
-    if (!reservation || !unit) {
+    // If exact match fails, try flexible matching
+    if (!unit) {
+      // Try to extract unit identifier from reservation unitCode
+      // Format: "[(J1) (4-1S)]" -> try matching parts
+      const unitCodePattern = unitCode.replace(/[\[\]()]/g, '').trim();
+      const parts = unitCodePattern.split(' ').filter(p => p.length > 0);
+      
+      if (parts.length > 0) {
+        // Try to find unit by searching for any part of the code
+        const units = await prisma.unit.findMany({
+          where: {
+            OR: parts.map(part => ({
+              unitCode: { contains: part }
+            }))
+          },
+          take: 1
+        });
+        
+        if (units.length > 0) {
+          unit = units[0];
+        }
+      }
+    }
+    
+    if (!reservation) {
       return res.status(404).json({ 
         success: false, 
-        error: 'Reservation or unit not found' 
+        error: 'Reservation not found' 
       });
     }
+    
+    // Note: Unit is optional - if not found, we'll still proceed with reservation data only
     
     // Populate template fields with data
     const populatedFields = template.fields.map(field => {
@@ -134,8 +186,57 @@ router.post('/populate-template', async (req, res) => {
         
         if (table === 'reservations' && reservation[column] !== undefined) {
           value = reservation[column];
-        } else if (table === 'units' && unit[column] !== undefined) {
+        } else if (table === 'units' && unit && unit[column] !== undefined) {
           value = unit[column];
+        }
+        
+        // Special mapping for Arabic form fields
+        // Use reservation unitCode as primary unit identifier
+        if (field.label && field.label.includes('كود الوحدة')) {
+          value = reservation.unitCode || value;
+        }
+        
+        // Map building/block number
+        if (field.label && field.label.includes('عمارة')) {
+          value = unit ? (unit.blockNo || unit.project || '') : '';
+        }
+        
+        // Map floor number (دور)
+        if (field.label && field.label.includes('دور')) {
+          value = unit ? (unit.floor || '') : '';
+        }
+        
+        // Map area (المساحة)
+        if (field.label && field.label.includes('المساحة') && !field.label.includes('الخارجية')) {
+          value = unit ? (unit.bua || '') : '';
+        }
+        
+        // Map outdoor area (المساحة الخارجية) - use any available outdoor space data
+        if (field.label && field.label.includes('المساحة الخارجية')) {
+          if (unit) {
+            // Priority: outdoor -> garden -> roof (use first available value)
+            if (unit.outdoor) {
+              value = unit.outdoor;
+            } else if (unit.garden) {
+              value = unit.garden;
+            } else if (unit.roof) {
+              value = unit.roof;
+            } else {
+              value = '';
+            }
+          } else {
+            value = '';
+          }
+        }
+        
+        // Map initial payment system (نظام التقسيط المبدئي)
+        if (field.label && field.label.includes('نظام التقسيط المبدئي')) {
+          value = reservation.payment || '';
+        }
+        
+        // Map unit price (سعر الوحدة)
+        if (field.label && field.label.includes('سعر الوحدة')) {
+          value = unit ? (unit.contractPrice || unit.unitPrice || '') : '';
         }
         
         // Format dates
@@ -203,16 +304,43 @@ router.post('/generate', async (req, res) => {
       where: { reservationCode }
     });
     
-    const unit = await prisma.unit.findUnique({
+    // Try to find unit by exact match first
+    let unit = await prisma.unit.findUnique({
       where: { unitCode }
     });
     
-    if (!reservation || !unit) {
+    // If exact match fails, try flexible matching
+    if (!unit) {
+      // Try to extract unit identifier from reservation unitCode
+      // Format: "[(J1) (4-1S)]" -> try matching parts
+      const unitCodePattern = unitCode.replace(/[\[\]()]/g, '').trim();
+      const parts = unitCodePattern.split(' ').filter(p => p.length > 0);
+      
+      if (parts.length > 0) {
+        // Try to find unit by searching for any part of the code
+        const units = await prisma.unit.findMany({
+          where: {
+            OR: parts.map(part => ({
+              unitCode: { contains: part }
+            }))
+          },
+          take: 1
+        });
+        
+        if (units.length > 0) {
+          unit = units[0];
+        }
+      }
+    }
+    
+    if (!reservation) {
       return res.status(404).json({ 
         success: false, 
-        error: 'Reservation or unit not found' 
+        error: 'Reservation not found' 
       });
     }
+    
+    // Note: Unit is optional - if not found, we'll still proceed with reservation data only
     
     // Populate template fields with data
     const populatedFields = template.fields.map(field => {
@@ -224,8 +352,57 @@ router.post('/generate', async (req, res) => {
         
         if (table === 'reservations' && reservation[column] !== undefined) {
           value = reservation[column];
-        } else if (table === 'units' && unit[column] !== undefined) {
+        } else if (table === 'units' && unit && unit[column] !== undefined) {
           value = unit[column];
+        }
+        
+        // Special mapping for Arabic form fields
+        // Use reservation unitCode as primary unit identifier
+        if (field.label && field.label.includes('كود الوحدة')) {
+          value = reservation.unitCode || value;
+        }
+        
+        // Map building/block number
+        if (field.label && field.label.includes('عمارة')) {
+          value = unit ? (unit.blockNo || unit.project || '') : '';
+        }
+        
+        // Map floor number (دور)
+        if (field.label && field.label.includes('دور')) {
+          value = unit ? (unit.floor || '') : '';
+        }
+        
+        // Map area (المساحة)
+        if (field.label && field.label.includes('المساحة') && !field.label.includes('الخارجية')) {
+          value = unit ? (unit.bua || '') : '';
+        }
+        
+        // Map outdoor area (المساحة الخارجية) - use any available outdoor space data
+        if (field.label && field.label.includes('المساحة الخارجية')) {
+          if (unit) {
+            // Priority: outdoor -> garden -> roof (use first available value)
+            if (unit.outdoor) {
+              value = unit.outdoor;
+            } else if (unit.garden) {
+              value = unit.garden;
+            } else if (unit.roof) {
+              value = unit.roof;
+            } else {
+              value = '';
+            }
+          } else {
+            value = '';
+          }
+        }
+        
+        // Map initial payment system (نظام التقسيط المبدئي)
+        if (field.label && field.label.includes('نظام التقسيط المبدئي')) {
+          value = reservation.payment || '';
+        }
+        
+        // Map unit price (سعر الوحدة)
+        if (field.label && field.label.includes('سعر الوحدة')) {
+          value = unit ? (unit.contractPrice || unit.unitPrice || '') : '';
         }
         
         // Format dates
